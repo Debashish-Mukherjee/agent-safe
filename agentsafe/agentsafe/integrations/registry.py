@@ -7,6 +7,7 @@ from agentsafe.integrations.model import ToolAction
 from agentsafe.integrations.openclaw.adapter_generic import parse_generic_request
 from agentsafe.integrations.openclaw.adapter_router import parse_openclaw_auto_request
 from agentsafe.integrations.openclaw.adapter_strict_v1 import parse_strict_v1_request
+from agentsafe.integrations.openclaw.adapter_strict_v2 import parse_strict_v2_request
 
 AdapterFn = Callable[[str, dict, str], ToolAction]
 
@@ -20,4 +21,6 @@ def get_adapter(name: str) -> AdapterFn:
         return parse_generic_request
     if name == "openclaw_strict_v1":
         return parse_strict_v1_request
+    if name == "openclaw_strict_v2":
+        return parse_strict_v2_request
     raise ValueError(f"unknown adapter: {name}")

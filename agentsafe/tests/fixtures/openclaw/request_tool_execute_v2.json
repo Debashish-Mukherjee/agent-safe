@@ -1,0 +1,15 @@
+{
+  "request_id": "oc2-req-1",
+  "actor": "openclaw-agent",
+  "session_id": "oc2-session-1",
+  "action": {
+    "name": "http.fetch",
+    "args": {
+      "url": "https://example.com"
+    }
+  },
+  "context": {
+    "cwd": "/workspace"
+  },
+  "openclaw_version": "v2"
+}

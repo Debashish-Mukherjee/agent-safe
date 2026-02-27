@@ -2,7 +2,7 @@ PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
 DC ?= $(shell command -v docker-compose >/dev/null 2>&1 && echo docker-compose || echo "docker compose")
 
-.PHONY: setup setup-container lint lint-container test test-container demo-openclaw demo-modeb-gateway clean clean-runtime
+.PHONY: setup setup-container lint lint-container test test-container demo-openclaw demo-modeb-gateway normalize-openclaw-fixtures clean clean-runtime
 
 setup:
 	@if $(PYTHON) -m pip --version >/dev/null 2>&1; then \
@@ -35,6 +35,9 @@ demo-openclaw:
 demo-modeb-gateway:
 	$(DC) -f integrations/light_gateway/docker-compose.yml up --build --abort-on-container-exit modeb-demo-runner
 	$(DC) -f integrations/light_gateway/docker-compose.yml down --remove-orphans
+
+normalize-openclaw-fixtures:
+	$(PYTHON) integrations/openclaw/normalize_captures.py
 
 clean:
 	rm -rf .pytest_cache agentsafe/.pytest_cache

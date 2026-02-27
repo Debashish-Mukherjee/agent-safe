@@ -13,8 +13,9 @@
 ## Next: Phase 4B/4C
 - Harden Mode B forwarding coverage for additional HTTP methods and streaming calls
 - Add structured tool schema adapters per OpenClaw version
-  - In progress: `openclaw_auto` strict-first router (`strict_v1` + generic fallback)
+  - In progress: `openclaw_auto` strict-first router (`strict_v2` -> `strict_v1` -> generic fallback)
   - Added payload capture utility: `integrations/openclaw/capture_requests.py`
+  - Added fixture normalizer: `integrations/openclaw/normalize_captures.py`
 - Replace OPA stub with real OPA/Rego adapter
 - Add grant UX for fine-grained scope templates and approval workflows
 

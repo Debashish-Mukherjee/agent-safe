@@ -32,3 +32,10 @@ def test_openclaw_auto_falls_back_if_strict_parse_fails():
     action = parse_openclaw_auto_request("/v1/tools/execute", payload, fallback_actor="fallback")
     assert action.request_id == "legacy-1"
     assert action.tool == "shell.run"
+
+
+def test_openclaw_auto_prefers_strict_v2_for_canonical_route():
+    payload = _fixture("request_tool_execute_v2.json")
+    action = parse_openclaw_auto_request("/v2/tools/execute", payload, fallback_actor="fallback")
+    assert action.request_id == "oc2-req-1"
+    assert action.tool == "http.fetch"

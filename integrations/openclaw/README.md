@@ -33,9 +33,11 @@ AGENTSAFE_POLICY_BACKEND=yaml \
 AGENTSAFE_PROXY_TOOL_PATH_REGEX='^/v1/tools/execute$,^/gateway/tools/execute$,^/api/tools/.+' \
 agentsafe proxy --host 0.0.0.0 --port 8090
 ```
-Default adapter is `openclaw_auto` (strict v1 first, then generic fallback). Override with:
+Default adapter is `openclaw_auto` (strict v2, then strict v1, then generic fallback). Override with:
 ```bash
 export AGENTSAFE_PROXY_ADAPTER=openclaw_strict_v1
+# or
+export AGENTSAFE_PROXY_ADAPTER=openclaw_strict_v2
 ```
 
 Grant privileged tool call approval (TTL scoped):
@@ -58,3 +60,12 @@ python3 integrations/openclaw/capture_requests.py --port 9088
 ```
 Point OpenClaw gateway/tool-callback traffic to this capture endpoint, then copy useful files from:
 - `agentsafe/tests/fixtures/openclaw/captured/`
+
+Normalize captured envelopes into payload-only stable fixtures:
+```bash
+make normalize-openclaw-fixtures
+# or:
+python3 integrations/openclaw/normalize_captures.py \
+  --in agentsafe/tests/fixtures/openclaw/captured \
+  --out agentsafe/tests/fixtures/openclaw
+```
