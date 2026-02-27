@@ -70,6 +70,10 @@ agentsafe fetch --policy policies/demo-openclaw.yaml --actor openclaw-agent --wo
 agentsafe audit tail
 agentsafe audit report --format md --output audit/report.md
 agentsafe grant issue --actor openclaw-agent --tool run --scope "curl *" --ttl 600 --reason "demo approval"
+agentsafe grant request --actor openclaw-agent --tool run --scope "curl https://openai.com" --ttl 300 --reason "need docs"
+agentsafe grant requests --status pending
+agentsafe grant approve <request_id> --reviewer secops --ttl 600 --reason "approved for demo"
+agentsafe grant scope-template --template run-binary --value curl
 agentsafe proxy --host 0.0.0.0 --port 8090
 agentsafe policy bundle --policy policies/demo-openclaw.yaml --out policies/bundle.json
 agentsafe policy verify --policy policies/demo-openclaw.yaml --bundle policies/bundle.json
@@ -111,7 +115,11 @@ make test-opa-live
 4. Approval-required command:
 - Command: `agentsafe run ... -- curl https://openai.com`
 - Result: `BLOCK requires approval`
-- Add approval token to `.agentsafe_approvals`, rerun -> allowed by policy gate.
+- Approve through grant workflow:
+  - `agentsafe grant request --actor openclaw-agent --tool run --scope "curl https://openai.com" --ttl 300`
+  - `agentsafe grant approve <request_id> --reviewer secops --ttl 600`
+  - rerun command -> allowed by policy gate
+- File token fallback (legacy demo): add line to `.agentsafe_approvals`.
 
 ## OpenClaw integration
 See [integrations/openclaw/README.md](integrations/openclaw/README.md).

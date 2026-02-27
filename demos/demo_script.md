@@ -93,7 +93,17 @@ rule_id: approval_required
 Manual approval:
 
 ```bash
-echo "curl https://openai.com" >> .agentsafe_approvals
+REQ_ID=$(agentsafe grant request \
+  --actor openclaw-agent \
+  --tool run \
+  --scope "curl https://openai.com" \
+  --ttl 300 \
+  --reason "demo curl allow" | python3 -c 'import json,sys; print(json.load(sys.stdin)["request_id"])')
+
+agentsafe grant approve "$REQ_ID" \
+  --reviewer secops \
+  --ttl 600 \
+  --reason "approved for demo"
 ```
 
 Second attempt expected:
@@ -104,6 +114,12 @@ ALLOW command allowed: curl
 
 Note: response content may be a challenge page depending on upstream site, but
 the policy decision should be ALLOW after approval.
+
+Fallback (legacy token path):
+
+```bash
+echo "curl https://openai.com" >> .agentsafe_approvals
+```
 
 ## Scene 5: Forensic traceability
 

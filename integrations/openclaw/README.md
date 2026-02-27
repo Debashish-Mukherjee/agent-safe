@@ -45,13 +45,19 @@ Grant privileged tool call approval (TTL scoped):
 ```bash
 agentsafe grant issue --actor openclaw-agent --tool run --scope 'curl *' --ttl 900 --reason 'demo'
 ```
+Approval workflow alternative:
+```bash
+agentsafe grant request --actor openclaw-agent --tool run --scope 'curl https://openai.com' --ttl 300 --reason 'demo'
+agentsafe grant requests --status pending
+agentsafe grant approve <request_id> --reviewer secops --ttl 900 --reason 'approved for demo'
+```
 
 ## Demo outputs
 Expected:
 - Scenario 1: BLOCK for `/etc/passwd`
 - Scenario 2: BLOCK for `https://example.com`
 - Scenario 3: ALLOW for `ls` and `git status`
-- Scenario 4: BLOCK then ALLOW after `.agentsafe_approvals` token
+- Scenario 4: BLOCK then ALLOW after grant approval (or `.agentsafe_approvals` fallback token)
 
 ## Capture real gateway payloads for strict adapters
 Use this to collect real OpenClaw tool-execution requests before adding

@@ -34,7 +34,9 @@ set +e
 agentsafe run --policy "$POLICY" --actor "$ACTOR" --workspace "$WORKSPACE" -- curl https://openai.com
 S4_BLOCK_RC=$?
 set -e
-echo "curl https://openai.com" >> "$WORKSPACE/.agentsafe_approvals"
+REQ_JSON=$(agentsafe grant request --actor "$ACTOR" --tool run --scope "curl https://openai.com" --ttl 300 --reason "demo approval request")
+REQ_ID=$(printf "%s" "$REQ_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["request_id"])')
+agentsafe grant approve "$REQ_ID" --reviewer "demo-operator" --ttl 900 --reason "approved for demo"
 set +e
 agentsafe run --policy "$POLICY" --actor "$ACTOR" --workspace "$WORKSPACE" -- curl https://openai.com
 S4_ALLOW_RC=$?

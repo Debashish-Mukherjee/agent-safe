@@ -20,6 +20,8 @@
 - Expand OPA/Rego parity coverage and add integration test with live OPA container
   - Added local live test path: `make test-opa-live`
 - Add grant UX for fine-grained scope templates and approval workflows
+  - Added `grant scope-template`, `grant request`, `grant requests`, `grant approve`, `grant reject`
+  - Added file-backed approval request ledger (`audit/approval_requests.jsonl`)
 
 ## Enterprise trajectory
 - Per-tool RBAC and session-scoped grants (JIT approvals)

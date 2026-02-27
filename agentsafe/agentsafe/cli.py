@@ -11,7 +11,9 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from agentsafe.approvals.grants import ApprovalRequestStore
 from agentsafe.approvals.grants import GrantStore
+from agentsafe.approvals.grants import render_scope_template
 from agentsafe.audit.ledger import AuditLedger
 from agentsafe.audit.render import render_markdown_report
 from agentsafe.policy.evaluate import RateLimiter
@@ -394,6 +396,70 @@ def grant_issue(
 ) -> None:
     grant = GrantStore().issue(actor=actor, tool=tool, scope=scope, ttl_seconds=ttl, reason=reason)
     console.print_json(data=asdict(grant))
+
+
+@grant_app.command("scope-template")
+def grant_scope_template(
+    template: str = typer.Option(..., "--template", help="run-binary|run-command|tool-prefix|http-domain"),
+    value: str = typer.Option(..., "--value"),
+    tool: str = typer.Option("run", "--tool"),
+) -> None:
+    try:
+        scope = render_scope_template(template=template, value=value, tool=tool)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    console.print(scope)
+
+
+@grant_app.command("request")
+def grant_request(
+    actor: str = typer.Option(..., "--actor"),
+    tool: str = typer.Option(..., "--tool"),
+    scope: str = typer.Option(..., "--scope"),
+    ttl: int = typer.Option(900, "--ttl", help="request expiry in seconds"),
+    reason: str = typer.Option("agent requested privileged action", "--reason"),
+) -> None:
+    req = ApprovalRequestStore().create(actor=actor, tool=tool, scope=scope, reason=reason, ttl_seconds=ttl)
+    console.print_json(data=asdict(req))
+
+
+@grant_app.command("requests")
+def grant_requests(status: str = typer.Option("pending", "--status", help="pending|approved|rejected|expired|all")) -> None:
+    rows = [asdict(item) for item in ApprovalRequestStore().list(status=status)]
+    console.print_json(data={"requests": rows})
+
+
+@grant_app.command("approve")
+def grant_approve(
+    request_id: str = typer.Argument(...),
+    reviewer: str = typer.Option("human-operator", "--reviewer"),
+    ttl: int = typer.Option(900, "--ttl", help="granted token ttl in seconds"),
+    reason: str = typer.Option("approved by human operator", "--reason"),
+) -> None:
+    try:
+        grant = ApprovalRequestStore().approve(
+            request_id=request_id,
+            reviewer=reviewer,
+            ttl_seconds=ttl,
+            reason=reason,
+            grant_store=GrantStore(),
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    console.print_json(data=asdict(grant))
+
+
+@grant_app.command("reject")
+def grant_reject(
+    request_id: str = typer.Argument(...),
+    reviewer: str = typer.Option("human-operator", "--reviewer"),
+    reason: str = typer.Option("rejected by human operator", "--reason"),
+) -> None:
+    try:
+        ApprovalRequestStore().reject(request_id=request_id, reviewer=reviewer, reason=reason)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc))
+    console.print(f"rejected {request_id}")
 
 
 @grant_app.command("list")
