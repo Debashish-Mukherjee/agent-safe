@@ -9,7 +9,8 @@ default evaluate := {
 evaluate := out if {
   input.action.type == "run"
   count(input.action.cmd) > 0
-  binary := lower(last(split(input.action.cmd[0], "/")))
+  parts := split(input.action.cmd[0], "/")
+  binary := lower(parts[count(parts)-1])
   some i
   rule := input.policy.tools.commands[i]
   lower(rule.binary) == binary
@@ -26,7 +27,7 @@ evaluate := out if {
   host := lower(input.action.host)
   some i
   allowed_domain := lower(input.policy.tools.network.domains[i])
-  host == allowed_domain or endswith(host, concat("", [".", allowed_domain]))
+  domain_matches(host, allowed_domain)
   some j
   input.action.port == input.policy.tools.network.ports[j]
   out := {
@@ -34,6 +35,14 @@ evaluate := out if {
     "reason": sprintf("domain allowed: %v:%v", [host, input.action.port]),
     "rule_id": "net_domain_allow",
   }
+}
+
+domain_matches(host, allowed_domain) if {
+  host == allowed_domain
+}
+
+domain_matches(host, allowed_domain) if {
+  endswith(host, concat("", [".", allowed_domain]))
 }
 
 evaluate := out if {

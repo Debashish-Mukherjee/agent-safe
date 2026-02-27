@@ -2,7 +2,7 @@ PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
 DC ?= $(shell command -v docker-compose >/dev/null 2>&1 && echo docker-compose || echo "docker compose")
 
-.PHONY: setup setup-container lint lint-container test test-container demo-openclaw demo-modeb-gateway normalize-openclaw-fixtures clean clean-runtime
+.PHONY: setup setup-container lint lint-container test test-container test-opa-live demo-openclaw demo-modeb-gateway normalize-openclaw-fixtures clean clean-runtime
 
 setup:
 	@if $(PYTHON) -m pip --version >/dev/null 2>&1; then \
@@ -27,6 +27,9 @@ test:
 
 test-container:
 	docker run --rm -v $(PWD):/repo -w /repo python:3.11-slim sh -lc "pip install -q -e ./agentsafe pytest && pytest agentsafe/tests"
+
+test-opa-live:
+	bash agentsafe/tests/run_opa_live_test.sh
 
 demo-openclaw:
 	$(DC) -f integrations/openclaw/docker-compose.yml up --build --abort-on-container-exit demo-runner

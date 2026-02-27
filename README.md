@@ -80,7 +80,7 @@ agentsafe policy verify --policy policies/demo-openclaw.yaml --bundle policies/b
 ```bash
 docker run --rm -p 8181:8181 \
   -v $(pwd)/policies/opa:/policies \
-  openpolicyagent/opa:latest run --server /policies/agentsafe.rego
+  openpolicyagent/opa:latest run --server --addr=0.0.0.0:8181 /policies/agentsafe.rego
 
 export AGENTSAFE_OPA_URL=http://127.0.0.1:8181
 agentsafe run --policy policies/demo-openclaw.yaml --policy-backend opa --workspace . -- ls
@@ -89,6 +89,11 @@ agentsafe run --policy policies/demo-openclaw.yaml --policy-backend opa --worksp
 Notes:
 - AgentSafe sends action + loaded YAML policy as OPA input to `agentsafe/evaluate`.
 - Rego sample file: `policies/opa/agentsafe.rego`.
+
+Live integration parity test (Dockerized OPA):
+```bash
+make test-opa-live
+```
 
 ## Demo walkthrough
 1. Filesystem exfil attempt:

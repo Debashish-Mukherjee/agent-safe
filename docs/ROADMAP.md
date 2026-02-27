@@ -18,6 +18,7 @@
   - Added payload capture utility: `integrations/openclaw/capture_requests.py`
   - Added fixture normalizer: `integrations/openclaw/normalize_captures.py`
 - Expand OPA/Rego parity coverage and add integration test with live OPA container
+  - Added local live test path: `make test-opa-live`
 - Add grant UX for fine-grained scope templates and approval workflows
 
 ## Enterprise trajectory
