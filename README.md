@@ -113,6 +113,6 @@ See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## MVP limitations
 - Command/file observation in `run` is best-effort from arguments, not full syscall tracing.
-- `agentsafe fetch` performs host-side HTTP request after policy allow check in MVP.
+- `agentsafe fetch` runs inside the Docker sandbox using `curl`, but file-touch visibility is still output-path based (not syscall traced).
 - Domain allow-list can still leak data to allowed domains.
 - Docker sandbox is strong but not equivalent to microVM isolation.

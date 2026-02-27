@@ -2,18 +2,31 @@ PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
 DC ?= $(shell command -v docker-compose >/dev/null 2>&1 && echo docker-compose || echo "docker compose")
 
-.PHONY: setup lint test demo-openclaw demo-modeb-gateway clean
+.PHONY: setup setup-container lint lint-container test test-container demo-openclaw demo-modeb-gateway clean clean-runtime
 
 setup:
-	$(PIP) install --upgrade pip
-	$(PIP) install -e ./agentsafe pytest
+	@if $(PYTHON) -m pip --version >/dev/null 2>&1; then \
+		$(PIP) install --upgrade pip; \
+		$(PIP) install -e ./agentsafe pytest; \
+	else \
+		echo "local pip unavailable; skipping local python install (use make test-container)"; \
+	fi
+	docker build -f agentsafe/agentsafe/sandbox/images/Dockerfile.sandbox -t agentsafe-sandbox:local .
+
+setup-container:
 	docker build -f agentsafe/agentsafe/sandbox/images/Dockerfile.sandbox -t agentsafe-sandbox:local .
 
 lint:
 	$(PYTHON) -m compileall -q agentsafe
 
+lint-container:
+	docker run --rm -v $(PWD):/repo -w /repo python:3.11-slim sh -lc "python3 -m compileall -q agentsafe"
+
 test:
 	pytest agentsafe/tests
+
+test-container:
+	docker run --rm -v $(PWD):/repo -w /repo python:3.11-slim sh -lc "pip install -q -e ./agentsafe pytest && pytest agentsafe/tests"
 
 demo-openclaw:
 	$(DC) -f integrations/openclaw/docker-compose.yml up --build --abort-on-container-exit demo-runner
@@ -25,5 +38,9 @@ demo-modeb-gateway:
 
 clean:
 	rm -rf .pytest_cache agentsafe/.pytest_cache
+	rm -rf audit/*.jsonl audit/*.md || true
+	rm -f .agentsafe_approvals
+
+clean-runtime:
 	rm -rf audit/*.jsonl audit/*.md || true
 	rm -f .agentsafe_approvals

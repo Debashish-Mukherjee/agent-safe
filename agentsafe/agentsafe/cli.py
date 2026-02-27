@@ -8,7 +8,6 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-import requests
 import typer
 from rich.console import Console
 
@@ -54,6 +53,17 @@ def _parse_proxy_logs(proxy_log_path: Path) -> list[dict[str, object]]:
         except json.JSONDecodeError:
             continue
     return entries
+
+
+def _runner_env_and_network(backend) -> tuple[dict[str, str], str]:
+    network_mode = "none"
+    run_env = _collect_env(backend.env_allowlist())
+    if backend.network_mode() == "allow_proxy":
+        network_mode = "bridge"
+        proxy_url = os.environ.get("AGENTSAFE_PROXY_URL", "http://host.docker.internal:8080")
+        run_env["HTTP_PROXY"] = proxy_url
+        run_env["HTTPS_PROXY"] = proxy_url
+    return run_env, network_mode
 
 
 def _requires_approval(command: list[str]) -> bool:
@@ -171,14 +181,8 @@ def run(
         console.print(f"[yellow]BLOCK[/yellow] {reason}")
         raise typer.Exit(3)
 
-    network_mode = "none"
-    run_env = _collect_env(backend.env_allowlist())
+    run_env, network_mode = _runner_env_and_network(backend)
     proxy_log = Path("audit/proxy.log.jsonl")
-    if backend.network_mode() == "allow_proxy":
-        network_mode = "bridge"
-        proxy_url = os.environ.get("AGENTSAFE_PROXY_URL", "http://host.docker.internal:8080")
-        run_env["HTTP_PROXY"] = proxy_url
-        run_env["HTTPS_PROXY"] = proxy_url
 
     runner = DockerSandboxRunner(cpu_limit=cpu_limit or None, mem_limit=mem_limit or None)
     result = runner.run(command=cmd, workspace=workspace_path, network_mode=network_mode, env=run_env)
@@ -294,10 +298,19 @@ def fetch(
         console.print(f"[red]BLOCK[/red] {path_decision.reason}")
         raise typer.Exit(2)
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    resp = requests.get(url, timeout=20)
-    if resp.status_code >= 400:
-        reason = f"HTTP error: {resp.status_code}"
+    out_rel = out_path.relative_to(workspace_path).as_posix()
+    run_env, network_mode = _runner_env_and_network(backend)
+    proxy_log = Path("audit/proxy.log.jsonl")
+
+    runner = DockerSandboxRunner()
+    result = runner.run(
+        command=["curl", "-fsSL", url, "-o", out_rel],
+        workspace=workspace_path,
+        network_mode=network_mode,
+        env=run_env,
+    )
+    if result.returncode != 0:
+        reason = f"fetch command exited non-zero ({result.returncode})"
         ledger.write_event(
             {
                 "request_id": request_id,
@@ -306,16 +319,20 @@ def fetch(
                 "args_summary": url,
                 "decision": "BLOCK",
                 "reason": reason,
-                "rule_id": "fetch_http_error",
-                "sandbox": {},
-                "network_attempts": [{"url": url, "status_code": resp.status_code}],
+                "rule_id": "fetch_exec_error",
+                "sandbox": {
+                    "container_id": result.container_id,
+                    "workspace_mount": str(workspace_path),
+                    "network_mode": network_mode,
+                },
+                "network_attempts": _parse_proxy_logs(proxy_log) if backend.network_mode() == "allow_proxy" else [],
+                "stderr_preview": result.stderr[-800:],
                 "files_touched": [],
             }
         )
         console.print(f"[red]BLOCK[/red] {reason}")
         raise typer.Exit(2)
 
-    out_path.write_bytes(resp.content)
     ledger.write_event(
         {
             "request_id": request_id,
@@ -326,10 +343,11 @@ def fetch(
             "reason": decision.reason,
             "rule_id": decision.rule_id,
             "sandbox": {
+                "container_id": result.container_id,
                 "workspace_mount": str(workspace_path),
-                "network_mode": backend.network_mode(),
+                "network_mode": network_mode,
             },
-            "network_attempts": [{"url": url, "status_code": resp.status_code}],
+            "network_attempts": _parse_proxy_logs(proxy_log) if backend.network_mode() == "allow_proxy" else [],
             "files_touched": [str(out_path)],
         }
     )

@@ -1,0 +1,13 @@
+{
+  "request_id": "oc-req-1",
+  "actor": "openclaw-agent",
+  "session_id": "oc-session-1",
+  "tool": "shell.run",
+  "args": {
+    "command": "ls"
+  },
+  "context": {
+    "cwd": "/workspace"
+  },
+  "openclaw_version": "v1"
+}
