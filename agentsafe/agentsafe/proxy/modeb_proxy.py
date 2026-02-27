@@ -25,7 +25,7 @@ class ProxyConfig:
     policy_backend: str
     workspace: str
     path_regexes: list[str]
-    adapter: str = "openclaw_generic"
+    adapter: str = "openclaw_auto"
     actor_header: str = "X-Agent-Actor"
 
 
@@ -48,7 +48,7 @@ def load_proxy_config() -> ProxyConfig:
         policy_backend=os.environ.get("AGENTSAFE_POLICY_BACKEND", "yaml"),
         workspace=os.environ.get("AGENTSAFE_WORKSPACE", "."),
         path_regexes=[part.strip() for part in regex_csv.split(",") if part.strip()],
-        adapter=os.environ.get("AGENTSAFE_PROXY_ADAPTER", "openclaw_generic"),
+        adapter=os.environ.get("AGENTSAFE_PROXY_ADAPTER", "openclaw_auto"),
         actor_header=os.environ.get("AGENTSAFE_ACTOR_HEADER", "X-Agent-Actor"),
     )
 

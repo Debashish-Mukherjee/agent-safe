@@ -33,6 +33,10 @@ AGENTSAFE_POLICY_BACKEND=yaml \
 AGENTSAFE_PROXY_TOOL_PATH_REGEX='^/v1/tools/execute$,^/gateway/tools/execute$,^/api/tools/.+' \
 agentsafe proxy --host 0.0.0.0 --port 8090
 ```
+Default adapter is `openclaw_auto` (strict v1 first, then generic fallback). Override with:
+```bash
+export AGENTSAFE_PROXY_ADAPTER=openclaw_strict_v1
+```
 
 Grant privileged tool call approval (TTL scoped):
 ```bash
@@ -45,3 +49,12 @@ Expected:
 - Scenario 2: BLOCK for `https://example.com`
 - Scenario 3: ALLOW for `ls` and `git status`
 - Scenario 4: BLOCK then ALLOW after `.agentsafe_approvals` token
+
+## Capture real gateway payloads for strict adapters
+Use this to collect real OpenClaw tool-execution requests before adding
+`adapter_strict_<version>.py` implementations:
+```bash
+python3 integrations/openclaw/capture_requests.py --port 9088
+```
+Point OpenClaw gateway/tool-callback traffic to this capture endpoint, then copy useful files from:
+- `agentsafe/tests/fixtures/openclaw/captured/`

@@ -1,0 +1,9 @@
+{
+  "id": "legacy-1",
+  "actor": "legacy-agent",
+  "session": "legacy-session",
+  "name": "shell.run",
+  "input": {
+    "command": "ls -la"
+  }
+}
