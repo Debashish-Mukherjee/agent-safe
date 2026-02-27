@@ -31,6 +31,7 @@ AGENTSAFE_UPSTREAM_URL=http://openclaw:3333 \
 AGENTSAFE_POLICY=policies/demo-openclaw.yaml \
 AGENTSAFE_POLICY_BACKEND=yaml \
 AGENTSAFE_PROXY_TOOL_PATH_REGEX='^/v1/tools/execute$,^/gateway/tools/execute$,^/api/tools/.+' \
+AGENTSAFE_PROXY_TOOL_METHODS='POST,PUT,PATCH' \
 agentsafe proxy --host 0.0.0.0 --port 8090
 ```
 Default adapter is `openclaw_auto` (strict v2, then strict v1, then generic fallback). Override with:

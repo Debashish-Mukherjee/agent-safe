@@ -25,6 +25,7 @@ class ProxyConfig:
     policy_backend: str
     workspace: str
     path_regexes: list[str]
+    tool_methods: list[str]
     adapter: str = "openclaw_auto"
     actor_header: str = "X-Agent-Actor"
 
@@ -42,12 +43,14 @@ def load_proxy_config() -> ProxyConfig:
         "AGENTSAFE_PROXY_TOOL_PATH_REGEX",
         r"^/v1/tools/execute$,^/gateway/tools/execute$,^/api/tools/.+",
     )
+    method_csv = os.environ.get("AGENTSAFE_PROXY_TOOL_METHODS", "POST,PUT,PATCH")
     return ProxyConfig(
         upstream=os.environ.get("AGENTSAFE_UPSTREAM_URL", "http://openclaw:3333"),
         policy_path=os.environ.get("AGENTSAFE_POLICY", "policies/demo-openclaw.yaml"),
         policy_backend=os.environ.get("AGENTSAFE_POLICY_BACKEND", "yaml"),
         workspace=os.environ.get("AGENTSAFE_WORKSPACE", "."),
         path_regexes=[part.strip() for part in regex_csv.split(",") if part.strip()],
+        tool_methods=[part.strip().upper() for part in method_csv.split(",") if part.strip()],
         adapter=os.environ.get("AGENTSAFE_PROXY_ADAPTER", "openclaw_auto"),
         actor_header=os.environ.get("AGENTSAFE_ACTOR_HEADER", "X-Agent-Actor"),
     )
@@ -55,6 +58,33 @@ def load_proxy_config() -> ProxyConfig:
 
 def _route_matches(path: str, path_regexes: list[str]) -> bool:
     return any(re.search(pattern, path) for pattern in path_regexes)
+
+
+def _method_matches(method: str, allowed_methods: list[str]) -> bool:
+    return method.upper() in {m.upper() for m in allowed_methods}
+
+
+def should_inspect_tool_call(method: str, path: str, config: ProxyConfig) -> bool:
+    return _method_matches(method, config.tool_methods) and _route_matches(path, config.path_regexes)
+
+
+def forward_upstream(method: str, url: str, headers: dict[str, str], raw_body: bytes):
+    return requests.request(method=method, url=url, data=raw_body, headers=headers, timeout=20, stream=True)
+
+
+def relay_upstream_response(handler: BaseHTTPRequestHandler, response) -> None:
+    handler.send_response(response.status_code)
+    for key, value in response.headers.items():
+        if key.lower() in {"content-length", "transfer-encoding", "connection"}:
+            continue
+        handler.send_header(key, value)
+    handler.end_headers()
+    try:
+        for chunk in response.iter_content(chunk_size=64 * 1024):
+            if chunk:
+                handler.wfile.write(chunk)
+    finally:
+        response.close()
 
 
 def _command_from_action(action: ToolAction) -> list[str]:
@@ -170,18 +200,20 @@ class ModeBHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_POST(self):
+    def _read_body(self) -> bytes:
         content_length = int(self.headers.get("Content-Length", "0"))
-        raw_body = self.rfile.read(content_length) if content_length else b"{}"
+        return self.rfile.read(content_length) if content_length else b""
+
+    def _handle_request(self, method: str):
+        raw_body = self._read_body()
         generated_request_id = self.ledger.new_request_id()
         actor = self.headers.get(self.config.actor_header, "openclaw-agent")
 
-        try:
-            payload = json.loads(raw_body.decode("utf-8"))
-        except json.JSONDecodeError:
-            payload = {}
-
-        if _route_matches(self.path, self.config.path_regexes):
+        if should_inspect_tool_call(method=method, path=self.path, config=self.config):
+            try:
+                payload = json.loads(raw_body.decode("utf-8"))
+            except json.JSONDecodeError:
+                payload = {}
             try:
                 adapter_fn = self.__class__.adapter_fn
                 evaluation = process_tool_request(
@@ -208,19 +240,26 @@ class ModeBHandler(BaseHTTPRequestHandler):
         upstream_url = urljoin(self.config.upstream.rstrip("/") + "/", self.path.lstrip("/"))
         headers = {k: v for k, v in self.headers.items() if k.lower() not in {"host", "content-length"}}
         try:
-            response = requests.post(upstream_url, data=raw_body, headers=headers, timeout=20)
+            response = forward_upstream(method=method, url=upstream_url, headers=headers, raw_body=raw_body)
         except requests.RequestException as exc:
             self._write_json(502, {"error": "upstream_unavailable", "reason": str(exc), "request_id": generated_request_id})
             return
-        self.send_response(response.status_code)
-        for key, value in response.headers.items():
-            if key.lower() in {"content-length", "transfer-encoding", "connection"}:
-                continue
-            self.send_header(key, value)
-        body = response.content
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        relay_upstream_response(self, response)
+
+    def do_POST(self):
+        self._handle_request("POST")
+
+    def do_PUT(self):
+        self._handle_request("PUT")
+
+    def do_PATCH(self):
+        self._handle_request("PATCH")
+
+    def do_DELETE(self):
+        self._handle_request("DELETE")
+
+    def do_GET(self):
+        self._handle_request("GET")
 
 
 def run_modeb_proxy(listen_host: str, listen_port: int) -> None:

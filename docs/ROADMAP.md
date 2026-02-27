@@ -12,6 +12,7 @@
 
 ## Next: Phase 4B/4C
 - Harden Mode B forwarding coverage for additional HTTP methods and streaming calls
+  - Implemented in proxy: method-aware interception (`AGENTSAFE_PROXY_TOOL_METHODS`) and streaming-safe upstream relay
 - Add structured tool schema adapters per OpenClaw version
   - In progress: `openclaw_auto` strict-first router (`strict_v2` -> `strict_v1` -> generic fallback)
   - Added payload capture utility: `integrations/openclaw/capture_requests.py`

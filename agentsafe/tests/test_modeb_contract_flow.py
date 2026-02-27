@@ -22,6 +22,7 @@ def _config(tmp_path: Path) -> ProxyConfig:
         policy_backend="yaml",
         workspace=str(tmp_path),
         path_regexes=[r"^/v1/tools/execute$"],
+        tool_methods=["POST", "PUT", "PATCH"],
         adapter="light_gateway",
     )
 
