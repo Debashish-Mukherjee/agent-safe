@@ -1,0 +1,41 @@
+policy_id: demo-openclaw
+default_decision: deny
+tools:
+  commands:
+    - binary: ls
+      rule_id: cmd_ls
+    - binary: git
+      arg_regex: "^(status|diff|log)(\\s|$)"
+      rule_id: cmd_git_readonly
+    - binary: cat
+      rule_id: cmd_cat_guarded
+    - binary: echo
+      rule_id: cmd_echo
+    - binary: curl
+      rule_id: cmd_curl
+  paths:
+    allow:
+      - .
+    deny:
+      - /etc
+      - /proc
+      - /sys
+      - ~/.ssh
+      - $HOME
+  env_allowlist:
+    - LANG
+    - LC_ALL
+    - TZ
+  network:
+    mode: allow_proxy
+    domains:
+      - openai.com
+      - github.com
+    ports: [443]
+  rate_limits:
+    - category: run
+      capacity: 15
+      refill_per_sec: 1.5
+    - category: fetch
+      capacity: 8
+      refill_per_sec: 1

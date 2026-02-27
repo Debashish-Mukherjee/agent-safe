@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: agentsafe
+Version: 0.1.0
+Summary: Zero-trust sandbox harness for local AI agents
+Author: AgentSafe Maintainers
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: rich>=13.0
+Requires-Dist: typer>=0.12
+Requires-Dist: requests>=2.31
+Provides-Extra: security
+Requires-Dist: cryptography>=42.0; extra == "security"
+
+# AgentSafe Python Package
+
+Core package for AgentSafe CLI, policy, sandbox, network proxy, and audit features.

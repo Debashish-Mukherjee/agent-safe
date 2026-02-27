@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentsafe"
+version = "0.1.0"
+description = "Zero-trust sandbox harness for local AI agents"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  {name = "AgentSafe Maintainers"}
+]
+dependencies = [
+  "pyyaml>=6.0",
+  "rich>=13.0",
+  "typer>=0.12",
+  "requests>=2.31"
+]
+
+[project.optional-dependencies]
+security = [
+  "cryptography>=42.0"
+]
+
+[project.scripts]
+agentsafe = "agentsafe.cli:app"
+agentsafe-run = "agentsafe.cli:run_alias"
+agentsafe-fetch = "agentsafe.cli:fetch_alias"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentsafe*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-q"

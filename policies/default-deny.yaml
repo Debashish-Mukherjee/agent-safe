@@ -1,0 +1,33 @@
+policy_id: default-deny
+default_decision: deny
+tools:
+  commands:
+    - binary: ls
+      rule_id: cmd_ls
+    - binary: git
+      arg_regex: "^(status|diff|log)(\\s|$)"
+      rule_id: cmd_git_readonly
+  paths:
+    allow:
+      - .
+    deny:
+      - /etc
+      - /proc
+      - /sys
+      - ~/.ssh
+      - $HOME
+  env_allowlist:
+    - LANG
+    - LC_ALL
+    - TZ
+  network:
+    mode: none
+    domains: []
+    ports: [443]
+  rate_limits:
+    - category: run
+      capacity: 20
+      refill_per_sec: 2
+    - category: fetch
+      capacity: 10
+      refill_per_sec: 1

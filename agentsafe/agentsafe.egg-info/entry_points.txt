@@ -1,0 +1,4 @@
+[console_scripts]
+agentsafe = agentsafe.cli:app
+agentsafe-fetch = agentsafe.cli:fetch_alias
+agentsafe-run = agentsafe.cli:run_alias

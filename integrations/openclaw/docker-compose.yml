@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  openclaw:
+    image: ${OPENCLAW_IMAGE:-alpine:3.20}
+    container_name: openclaw-demo
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    ports:
+      - "${OPENCLAW_PORT:-3333}:3333"
+    command: ["sh", "-lc", "echo 'OpenClaw placeholder running (set OPENCLAW_IMAGE to official image if needed)'; sleep infinity"]
+
+  agentsafe-proxy:
+    image: python:3.11-slim
+    container_name: agentsafe-allow-proxy
+    working_dir: /repo
+    command:
+      - sh
+      - -lc
+      - |
+        pip install -q -e ./agentsafe && \
+        python -m agentsafe.net.allowproxy \
+          --host 0.0.0.0 \
+          --port 8080 \
+          --allow-domain github.com \
+          --allow-domain openai.com \
+          --allow-port 443 \
+          --log-file /repo/audit/proxy.log.jsonl
+    volumes:
+      - ../../:/repo
+    ports:
+      - "8080:8080"
+
+  fake-bank-api:
+    image: hashicorp/http-echo:1.0
+    container_name: agentsafe-fake-bank
+    command: ["-listen=:5678", "-text=bank-internal"]
+    ports:
+      - "5678:5678"
+
+  demo-runner:
+    image: docker:28-cli
+    container_name: agentsafe-demo-runner
+    depends_on:
+      - agentsafe-proxy
+      - openclaw
+    working_dir: /repo
+    environment:
+      - AGENTSAFE_PROXY_URL=http://host.docker.internal:8080
+      - OPENCLAW_BASE_URL=http://openclaw:3333
+      - HOST_WORKSPACE=/home/debashish/trials/agent-safe
+    command:
+      - sh
+      - -lc
+      - |
+        apk add --no-cache python3 py3-pip bash git && \
+        python3 -m pip install --break-system-packages -q -e ./agentsafe && \
+        bash ./integrations/openclaw/run_demo.sh
+    volumes:
+      - ../../:/repo
+      - ../../:/home/debashish/trials/agent-safe
+      - /var/run/docker.sock:/var/run/docker.sock

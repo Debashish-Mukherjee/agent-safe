@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  light-gateway:
+    image: python:3.11-slim
+    container_name: agentsafe-light-gateway
+    working_dir: /repo
+    command:
+      - sh
+      - -lc
+      - |
+        apt-get update -y && apt-get install -y curl && \
+        python3 -m pip install -q requests && \
+        python3 integrations/light_gateway/server.py
+    volumes:
+      - ../../:/repo
+    ports:
+      - "8088:8088"
+
+  agentsafe-modeb-proxy:
+    image: python:3.11-slim
+    container_name: agentsafe-modeb-proxy
+    working_dir: /repo
+    environment:
+      - AGENTSAFE_UPSTREAM_URL=http://light-gateway:8088
+      - AGENTSAFE_POLICY=/repo/policies/demo-openclaw.yaml
+      - AGENTSAFE_POLICY_BACKEND=yaml
+      - AGENTSAFE_WORKSPACE=/repo
+      - AGENTSAFE_PROXY_ADAPTER=light_gateway
+      - AGENTSAFE_PROXY_TOOL_PATH_REGEX=^/v1/tools/execute,^/v1/tools/plan
+    command:
+      - sh
+      - -lc
+      - |
+        pip install -q -e ./agentsafe && \
+        agentsafe proxy --host 0.0.0.0 --port 8090
+    depends_on:
+      - light-gateway
+    volumes:
+      - ../../:/repo
+    ports:
+      - "8090:8090"
+
+  modeb-demo-runner:
+    image: python:3.11-slim
+    container_name: agentsafe-modeb-demo-runner
+    working_dir: /repo
+    command:
+      - sh
+      - -lc
+      - |
+        pip install -q -e ./agentsafe && \
+        python3 -m pip install -q requests && \
+        sleep 3 && \
+        bash ./integrations/light_gateway/run_demo_modeb.sh
+    depends_on:
+      - agentsafe-modeb-proxy
+    volumes:
+      - ../../:/repo

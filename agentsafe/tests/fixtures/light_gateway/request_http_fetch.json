@@ -1,0 +1,12 @@
+{
+  "request_id": "req-http-1",
+  "actor": "openclaw-agent",
+  "session_id": "session-123",
+  "tool": "http.fetch",
+  "args": {
+    "url": "https://example.com"
+  },
+  "context": {
+    "cwd": "/workspace"
+  }
+}
