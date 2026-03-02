@@ -54,6 +54,27 @@ AgentSafe enforces default-deny policy plus auditable decisions.
 - Python 3.11+
 - GNU Make
 
+## macOS quickstart and caveats
+- Works well on macOS for the default runtime path (`docker` sandbox profile).
+- Prerequisites:
+  - Docker Desktop for Mac
+  - Python 3.11+
+  - GNU Make (`brew install make` if needed)
+- Quickstart:
+```bash
+git clone <this-repo>
+cd agent-safe
+make setup
+make demo-openclaw
+make demo-modeb-gateway
+```
+- Runtime profile caveats on macOS:
+  - `docker`: supported and recommended.
+  - `gvisor`: generally Linux-focused; availability may vary on macOS Docker setups.
+  - `firecracker`: requires Linux/KVM and is not a native macOS execution path.
+- Networking note:
+  - The default proxy path uses `host.docker.internal`, which is supported on Docker Desktop for Mac.
+
 ## Quickstart (5-10 minutes)
 ```bash
 git clone <this-repo>
