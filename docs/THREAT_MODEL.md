@@ -1,5 +1,8 @@
 # AgentSafe Threat Model (MVP+)
 
+## Architecture view
+![AgentSafe Layered Security Architecture (Social Card)](assets/architecture-layered-v3-dark-social.svg)
+
 ## Assets to protect
 - Host files outside workspace (home directory, SSH keys, system files)
 - Secrets in environment variables
@@ -42,6 +45,50 @@
 - Outbound `http.fetch` exfil controls at proxy boundary: method/path/header/body checks and deny-pattern filtering
 - Output-channel controls: stdout/stderr caps and proxy response size/timing controls (delay + jitter knobs)
 - Optional HMAC-signed ledger checkpoints for local integrity anchoring (`agentsafe audit checkpoint` / `verify-checkpoints`)
+
+## Control-Flow Sequence (Mermaid)
+```mermaid
+sequenceDiagram
+  autonumber
+  participant A as Agent/OpenClaw
+  participant P as AgentSafe Proxy/CLI
+  participant PE as Policy Engine
+  participant G as Grant/Approval Store
+  participant S as Sandbox (Docker/gVisor/Firecracker)
+  participant U as Upstream API
+  participant L as Audit Ledger
+  participant V as Verify/Report
+
+  A->>P: Tool request (run/http.fetch, actor, session_id, args)
+  P->>PE: Evaluate command/path/network/rbac/profile
+  PE-->>P: ALLOW/BLOCK + rule_id + reason
+
+  alt Blocked by policy
+    P->>L: Write BLOCK event (request, actor, tool, reason, rule_id)
+    P-->>A: BLOCK response
+  else Allowed by policy
+    P->>G: Check grant for privileged action
+    alt Grant missing
+      P->>L: Write BLOCK event (proxy_approval_required)
+      P-->>A: BLOCK (approval required)
+    else Grant present
+      alt shell.run path
+        P->>S: Execute command in selected sandbox profile
+        S-->>P: exit_code, stdout/stderr, trace artifacts
+      else http.fetch path
+        P->>U: Forward upstream request (method/path/header/body checks enforced)
+        U-->>P: Streaming response
+      end
+
+      P->>L: Write ALLOW/BLOCK execution event (network attempts, files_touched, output controls, trace digest)
+      P-->>A: Return result/response
+    end
+  end
+
+  Note over V,L: Offline integrity checks
+  V->>L: verify-chain / verify-trace / verify-checkpoints / verify-all
+  L-->>V: integrity status + findings
+```
 
 ## Residual Risks and Future Hardening
 

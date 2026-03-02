@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="680" viewBox="0 0 1400 680" role="img" aria-labelledby="title desc">
+  <title id="title">AgentSafe Compact Security Architecture</title>
+  <desc id="desc">Ultra-compact one-screen architecture for README fold.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 38px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 400 18px "Segoe UI", Arial, sans-serif; fill: #334155; }
+      .lane { rx: 14; stroke-width: 1.6; fill-opacity: 0.92; }
+      .l1 { fill: #ecfeff; stroke: #9ddfec; }
+      .l2 { fill: #eefdf3; stroke: #98e0b2; }
+      .l3 { fill: #fff8eb; stroke: #eec686; }
+      .l4 { fill: #fef2f2; stroke: #edb1b1; }
+      .l5 { fill: #f5f3ff; stroke: #c6bcf9; }
+      .lane-title { font: 700 19px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .capsule { fill: #ffffff; stroke: #d4deeb; stroke-width: 1.4; rx: 10; }
+      .capsule-text { font: 600 14px "Segoe UI", Arial, sans-serif; fill: #1e293b; text-anchor: middle; dominant-baseline: middle; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1400" height="680"/>
+  <text class="title" x="700" y="50" text-anchor="middle">AgentSafe Security Architecture (Compact)</text>
+  <text class="sub" x="700" y="78" text-anchor="middle">Layered controls for authorization, policy, isolation, integrity, and monitoring</text>
+
+  <rect class="lane l1" x="60" y="105" width="1280" height="82"/>
+  <text class="lane-title" x="82" y="136">Entry</text>
+  <rect class="capsule" x="380" y="126" width="260" height="40"/>
+  <text class="capsule-text" x="510" y="146">AgentSafe CLI</text>
+  <rect class="capsule" x="760" y="126" width="260" height="40"/>
+  <text class="capsule-text" x="890" y="146">Mode B Proxy</text>
+
+  <rect class="lane l2" x="60" y="200" width="1280" height="90"/>
+  <text class="lane-title" x="82" y="232">Identity + Authorization</text>
+  <rect class="capsule" x="180" y="240" width="1040" height="36"/>
+  <text class="capsule-text" x="700" y="258">Actor/Team/Profile Resolution • RBAC • Session-Scoped Grants</text>
+
+  <rect class="lane l3" x="60" y="303" width="1280" height="108"/>
+  <text class="lane-title" x="82" y="335">Policy Enforcement</text>
+  <rect class="capsule" x="110" y="352" width="370" height="40"/>
+  <text class="capsule-text" x="295" y="372">Policy Engine (YAML / OPA)</text>
+  <rect class="capsule" x="515" y="352" width="370" height="40"/>
+  <text class="capsule-text" x="700" y="372">Command + Path + Network Rules</text>
+  <rect class="capsule" x="920" y="352" width="370" height="40"/>
+  <text class="capsule-text" x="1105" y="372">Exfil + Output Controls</text>
+
+  <rect class="lane l4" x="60" y="424" width="1280" height="90"/>
+  <text class="lane-title" x="82" y="456">Isolated Execution</text>
+  <rect class="capsule" x="180" y="463" width="1040" height="36"/>
+  <text class="capsule-text" x="700" y="481">Sandbox Factory • Docker • gVisor • Firecracker</text>
+
+  <rect class="lane l5" x="60" y="527" width="1280" height="120"/>
+  <text class="lane-title" x="82" y="559">Audit + Integrity + Trust + Monitoring</text>
+  <rect class="capsule" x="90" y="574" width="300" height="50"/>
+  <text class="capsule-text" x="240" y="593">Hash-Chained Ledger</text>
+  <text class="capsule-text" x="240" y="611">Trace Attestation</text>
+  <rect class="capsule" x="410" y="574" width="300" height="50"/>
+  <text class="capsule-text" x="560" y="593">HMAC Checkpoints</text>
+  <text class="capsule-text" x="560" y="611">Verification</text>
+  <rect class="capsule" x="730" y="574" width="300" height="50"/>
+  <text class="capsule-text" x="880" y="593">Policy Bundle + Attest</text>
+  <text class="capsule-text" x="880" y="611">Trust Verify</text>
+  <rect class="capsule" x="1050" y="574" width="260" height="50"/>
+  <text class="capsule-text" x="1180" y="593">Telemetry Export</text>
+  <text class="capsule-text" x="1180" y="611">OTEL / Splunk / Elastic / Sentinel</text>
+</svg>

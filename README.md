@@ -14,6 +14,15 @@ OpenClaw-style agents can chain tool calls fast and autonomously. Without guardr
 
 AgentSafe enforces default-deny policy plus auditable decisions.
 
+## Security architecture (layered view)
+![AgentSafe Compact Security Architecture](docs/assets/architecture-layered-v4-compact-readme.svg)
+
+- Defense in depth: identity, policy, execution isolation, and integrity are separate control planes.
+- Explicit authorization: RBAC and session-scoped grants gate privileged actions.
+- Exfiltration-aware enforcement: request/response controls reduce common data-leak paths.
+- Verifiable operations: hash-chained audit events, trace attestations, and checkpoint verification.
+- Enterprise-ready visibility: telemetry export supports OTEL, Splunk, Elastic, and Sentinel.
+
 ## MVP features
 - Default-deny policy engine (YAML)
 - Command allow-list with optional argument regex

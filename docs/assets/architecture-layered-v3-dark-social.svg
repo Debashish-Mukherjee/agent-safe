@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">AgentSafe Security Architecture - Dark Social Card</title>
+  <desc id="desc">LinkedIn-optimized dark layered security architecture card for AgentSafe.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#131a2f"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 52px "Segoe UI", Arial, sans-serif; fill: #f8fafc; }
+      .subtitle { font: 400 22px "Segoe UI", Arial, sans-serif; fill: #cbd5e1; }
+      .layer { rx: 16; fill-opacity: 0.22; stroke-width: 1.6; }
+      .l0 { fill: #22d3ee; stroke: #67e8f9; }
+      .l1 { fill: #60a5fa; stroke: #93c5fd; }
+      .l2 { fill: #34d399; stroke: #86efac; }
+      .l3 { fill: #f59e0b; stroke: #fcd34d; }
+      .l4 { fill: #f87171; stroke: #fca5a5; }
+      .l5 { fill: #a78bfa; stroke: #c4b5fd; }
+      .l6 { fill: #ec4899; stroke: #f9a8d4; }
+      .layer-title { font: 700 22px "Segoe UI", Arial, sans-serif; fill: #f8fafc; }
+      .pill { fill: #0f172a; stroke: #334155; stroke-width: 1.4; rx: 11; }
+      .pill-text { font: 600 16px "Segoe UI", Arial, sans-serif; fill: #e2e8f0; text-anchor: middle; dominant-baseline: middle; }
+      .footer { font: 600 18px "Segoe UI", Arial, sans-serif; fill: #94a3b8; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="900" fill="url(#bg)"/>
+  <text class="title" x="800" y="68" text-anchor="middle">AgentSafe Layered Security</text>
+  <text class="subtitle" x="800" y="102" text-anchor="middle">Identity, policy, isolation, integrity, and trust in one local-first control stack</text>
+
+  <rect class="layer l0" x="70" y="132" width="1460" height="68"/>
+  <text class="layer-title" x="94" y="174">L0 External Actor</text>
+  <rect class="pill" x="620" y="148" width="360" height="36"/>
+  <text class="pill-text" x="800" y="166">Agent / Tool Caller</text>
+
+  <rect class="layer l1" x="70" y="212" width="1460" height="80"/>
+  <text class="layer-title" x="94" y="244">L1 Entry Boundary</text>
+  <rect class="pill" x="390" y="242" width="360" height="34"/>
+  <text class="pill-text" x="570" y="259">AgentSafe CLI</text>
+  <rect class="pill" x="850" y="242" width="360" height="34"/>
+  <text class="pill-text" x="1030" y="259">Mode B Proxy</text>
+
+  <rect class="layer l2" x="70" y="304" width="1460" height="94"/>
+  <text class="layer-title" x="94" y="336">L2 Identity &amp; Authorization</text>
+  <rect class="pill" x="170" y="346" width="1260" height="38"/>
+  <text class="pill-text" x="800" y="365">Actor/Team/Profile Resolution • RBAC Policy • Session-Scoped Grants</text>
+
+  <rect class="layer l3" x="70" y="410" width="1460" height="112"/>
+  <text class="layer-title" x="94" y="442">L3 Policy Enforcement</text>
+  <rect class="pill" x="130" y="458" width="430" height="40"/>
+  <text class="pill-text" x="345" y="479">Policy Engine (YAML / OPA)</text>
+  <rect class="pill" x="585" y="458" width="430" height="40"/>
+  <text class="pill-text" x="800" y="479">Command + Path + Network Rules</text>
+  <rect class="pill" x="1040" y="458" width="430" height="40"/>
+  <text class="pill-text" x="1255" y="479">Exfil + Output Controls</text>
+
+  <rect class="layer l4" x="70" y="534" width="1460" height="98"/>
+  <text class="layer-title" x="94" y="566">L4 Isolated Execution</text>
+  <rect class="pill" x="170" y="574" width="1260" height="40"/>
+  <text class="pill-text" x="800" y="595">Sandbox Factory • Docker • gVisor • Firecracker</text>
+
+  <rect class="layer l5" x="70" y="644" width="1460" height="128"/>
+  <text class="layer-title" x="94" y="676">L5 Audit, Integrity, Trust</text>
+  <rect class="pill" x="120" y="692" width="330" height="52"/>
+  <text class="pill-text" x="285" y="711">Hash-Chained Ledger</text>
+  <text class="pill-text" x="285" y="730">Trace Attestation</text>
+  <rect class="pill" x="480" y="692" width="320" height="52"/>
+  <text class="pill-text" x="640" y="711">HMAC Checkpoints</text>
+  <text class="pill-text" x="640" y="730">Integrity Verify</text>
+  <rect class="pill" x="830" y="692" width="320" height="52"/>
+  <text class="pill-text" x="990" y="711">Policy Bundle + Attest</text>
+  <text class="pill-text" x="990" y="730">Trust Verify</text>
+  <rect class="pill" x="1180" y="692" width="300" height="52"/>
+  <text class="pill-text" x="1330" y="711">Report + Dashboard</text>
+  <text class="pill-text" x="1330" y="730">Audit UI</text>
+
+  <rect class="layer l6" x="70" y="784" width="1460" height="66"/>
+  <text class="layer-title" x="94" y="822">L6 External Monitoring</text>
+  <rect class="pill" x="430" y="800" width="740" height="36"/>
+  <text class="pill-text" x="800" y="818">Telemetry Export → OTEL / Splunk / Elastic / Sentinel</text>
+
+  <text class="footer" x="800" y="882" text-anchor="middle">Local-first by default • Explicit approvals • Verifiable security controls</text>
+</svg>
