@@ -1,0 +1,16 @@
+trusted_issuers:
+  - secops
+
+source_uri_allow_regex:
+  - "^git\\+https://github\\.com/your-org/security-policies"
+
+max_bundle_age_hours: 168
+
+require_parent_chain: true
+require_signature: false
+
+# Optional signer trust pinning. If require_signature=true, provide one or both.
+trusted_pubkeys:
+  - "keys/policy-signing-ed25519.pub.pem"
+trusted_pubkey_sha256:
+  - "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

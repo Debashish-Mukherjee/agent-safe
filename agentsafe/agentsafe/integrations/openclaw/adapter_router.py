@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from agentsafe.integrations.model import ToolAction
 from agentsafe.integrations.openclaw.adapter_generic import parse_generic_request
+from agentsafe.integrations.openclaw.adapter_strict_legacy import OpenClawStrictLegacyAdapterError, parse_strict_legacy_request
 from agentsafe.integrations.openclaw.adapter_strict_v1 import OpenClawStrictV1AdapterError, parse_strict_v1_request
 from agentsafe.integrations.openclaw.adapter_strict_v2 import OpenClawStrictV2AdapterError, parse_strict_v2_request
 
@@ -11,7 +12,8 @@ def parse_openclaw_auto_request(path: str, payload: dict, fallback_actor: str = 
     Strict-first OpenClaw adapter routing.
 
     - Uses strict v1 adapter for /v1/tools/execute or explicit openclaw_version=v1 payloads.
-    - Falls back to generic extraction for unknown/legacy payloads.
+    - Uses strict legacy adapter for /gateway/tools/execute envelopes.
+    - Falls back to generic extraction for unknown payloads.
     """
     version = payload.get("openclaw_version")
     if path == "/v2/tools/execute" or version == "v2":
@@ -25,6 +27,12 @@ def parse_openclaw_auto_request(path: str, payload: dict, fallback_actor: str = 
             return parse_strict_v1_request(path, payload, fallback_actor=fallback_actor)
         except OpenClawStrictV1AdapterError:
             # Graceful fallback keeps proxy usable across mixed gateway payloads.
+            pass
+
+    if path == "/gateway/tools/execute" or version == "legacy":
+        try:
+            return parse_strict_legacy_request(path, payload, fallback_actor=fallback_actor)
+        except OpenClawStrictLegacyAdapterError:
             pass
 
     return parse_generic_request(path, payload, fallback_actor=fallback_actor)

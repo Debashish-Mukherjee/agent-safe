@@ -1,0 +1,21 @@
+default:
+  policy: demo-openclaw.yaml
+  backend: yaml
+
+profiles:
+  strict:
+    policy: default-deny.yaml
+    backend: yaml
+  opa-demo:
+    policy: demo-openclaw.yaml
+    backend: opa
+
+users:
+  alice:
+    policy: demo-openclaw.yaml
+    backend: yaml
+
+teams:
+  secops:
+    policy: default-deny.yaml
+    backend: yaml

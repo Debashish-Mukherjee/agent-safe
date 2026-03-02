@@ -24,6 +24,7 @@ def test_request_approve_flow(tmp_path):
         actor="openclaw-agent",
         tool="run",
         scope="curl https://openai.com",
+        session_id="session-123",
         reason="need external docs",
         ttl_seconds=300,
     )
@@ -38,7 +39,18 @@ def test_request_approve_flow(tmp_path):
         grant_store=grants,
     )
     assert grant.actor == "openclaw-agent"
-    assert grants.is_allowed(actor="openclaw-agent", tool="run", scope="curl https://openai.com")
+    assert grants.is_allowed(
+        actor="openclaw-agent",
+        tool="run",
+        scope="curl https://openai.com",
+        session_id="session-123",
+    )
+    assert not grants.is_allowed(
+        actor="openclaw-agent",
+        tool="run",
+        scope="curl https://openai.com",
+        session_id="other-session",
+    )
 
 
 def test_request_reject_flow(tmp_path):
@@ -60,3 +72,27 @@ def test_scope_template_rendering():
     assert render_scope_template("run-command", "curl https://openai.com", "run") == "curl https://openai.com"
     assert render_scope_template("tool-prefix", "curl ", "shell.run") == "shell.run curl *"
     assert render_scope_template("http-domain", "OpenAI.com", "fetch") == "http.fetch https://openai.com*"
+
+
+def test_session_scoped_grant_requires_matching_session(tmp_path):
+    store = GrantStore(tmp_path / "grants.jsonl")
+    store.issue(
+        actor="openclaw-agent",
+        tool="shell.run",
+        scope="shell.run curl https://openai.com",
+        session_id="s1",
+        ttl_seconds=60,
+        reason="demo",
+    )
+    assert store.is_allowed(
+        actor="openclaw-agent",
+        tool="shell.run",
+        scope="shell.run curl https://openai.com",
+        session_id="s1",
+    )
+    assert not store.is_allowed(
+        actor="openclaw-agent",
+        tool="shell.run",
+        scope="shell.run curl https://openai.com",
+        session_id="s2",
+    )

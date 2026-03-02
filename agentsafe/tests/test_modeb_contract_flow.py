@@ -4,6 +4,7 @@ from pathlib import Path
 from agentsafe.approvals.grants import GrantStore
 from agentsafe.integrations.registry import get_adapter
 from agentsafe.policy.factory import load_backend
+from agentsafe.policy.rbac import load_rbac_policy
 from agentsafe.proxy.modeb_proxy import ProxyConfig, build_audit_event, process_tool_request
 
 
@@ -41,6 +42,8 @@ def test_modeb_shell_allow_and_audit_fields(tmp_path: Path):
         config=config,
         backend=backend,
         grants=grants,
+        actor_team="",
+        rbac_policy=None,
         workspace_root=tmp_path,
         adapter_fn=adapter_fn,
     )
@@ -66,6 +69,8 @@ def test_modeb_http_block_and_audit_reason(tmp_path: Path):
         config=config,
         backend=backend,
         grants=grants,
+        actor_team="",
+        rbac_policy=None,
         workspace_root=tmp_path,
         adapter_fn=adapter_fn,
     )
@@ -98,6 +103,8 @@ def test_modeb_grant_required_then_allowed(tmp_path: Path):
         config=config,
         backend=backend,
         grants=grants,
+        actor_team="",
+        rbac_policy=None,
         workspace_root=tmp_path,
         adapter_fn=adapter_fn,
     )
@@ -108,6 +115,7 @@ def test_modeb_grant_required_then_allowed(tmp_path: Path):
         actor="openclaw-agent",
         tool="shell.run",
         scope="shell.run curl https://openai.com",
+        session_id="s1",
         ttl_seconds=600,
         reason="test",
     )
@@ -119,8 +127,70 @@ def test_modeb_grant_required_then_allowed(tmp_path: Path):
         config=config,
         backend=backend,
         grants=grants,
+        actor_team="",
+        rbac_policy=None,
         workspace_root=tmp_path,
         adapter_fn=adapter_fn,
     )
     assert allowed.allowed is True
     assert allowed.rule_id == "cmd_curl"
+
+    payload["session_id"] = "s2"
+    denied_wrong_session = process_tool_request(
+        path="/v1/tools/execute",
+        payload=payload,
+        fallback_actor="fallback",
+        config=config,
+        backend=backend,
+        grants=grants,
+        actor_team="",
+        rbac_policy=None,
+        workspace_root=tmp_path,
+        adapter_fn=adapter_fn,
+    )
+    assert denied_wrong_session.allowed is False
+    assert denied_wrong_session.rule_id == "proxy_approval_required"
+
+
+def test_modeb_rbac_blocks_tool_before_policy_eval(tmp_path: Path):
+    config = _config(tmp_path)
+    backend = load_backend("yaml", config.policy_path)
+    grants = GrantStore(tmp_path / "grants.jsonl")
+    adapter_fn = get_adapter("light_gateway")
+    rbac_path = tmp_path / "rbac.yaml"
+    rbac_path.write_text(
+        """
+roles:
+  viewer:
+    - "http.fetch"
+actor_roles:
+  openclaw-agent:
+    - viewer
+""".strip(),
+        encoding="utf-8",
+    )
+    rbac_policy = load_rbac_policy(rbac_path)
+
+    payload = {
+        "request_id": "req-rbac",
+        "actor": "openclaw-agent",
+        "session_id": "s1",
+        "tool": "shell.run",
+        "args": {"command": "ls"},
+        "context": {"cwd": "/workspace"},
+    }
+
+    denied = process_tool_request(
+        path="/v1/tools/execute",
+        payload=payload,
+        fallback_actor="fallback",
+        config=config,
+        backend=backend,
+        grants=grants,
+        actor_team="",
+        rbac_policy=rbac_policy,
+        workspace_root=tmp_path,
+        adapter_fn=adapter_fn,
+    )
+    assert denied.allowed is False
+    assert denied.rule_id == "proxy_rbac_block"

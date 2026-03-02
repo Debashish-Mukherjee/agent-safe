@@ -32,6 +32,14 @@ tools:
       - openai.com
       - github.com
     ports: [443]
+    http_methods: [GET, POST]
+    http_path_allow_regex:
+      - "^/.*"
+    max_request_body_bytes: 4096
+    deny_header_patterns:
+      - "(?i)authorization\\s*:\\s*bearer\\s+[a-z0-9._-]{16,}"
+    deny_body_patterns:
+      - "(?i)(api[_-]?key|secret|password)\\s*[:=]"
   rate_limits:
     - category: run
       capacity: 15
@@ -39,3 +47,9 @@ tools:
     - category: fetch
       capacity: 8
       refill_per_sec: 1
+  output:
+    max_stdout_bytes: 65536
+    max_stderr_bytes: 65536
+    proxy_max_response_bytes: 1048576
+    proxy_min_delay_ms: 0
+    proxy_jitter_ms: 0

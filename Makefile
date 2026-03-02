@@ -2,7 +2,7 @@ PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
 DC ?= $(shell command -v docker-compose >/dev/null 2>&1 && echo docker-compose || echo "docker compose")
 
-.PHONY: setup setup-container lint lint-container test test-container test-opa-live demo-openclaw demo-modeb-gateway normalize-openclaw-fixtures clean clean-runtime
+.PHONY: setup setup-container lint lint-container test test-container test-opa-live opa-local-up opa-local-down opa-local-health demo-openclaw demo-modeb-gateway normalize-openclaw-fixtures clean clean-runtime
 
 setup:
 	@if $(PYTHON) -m pip --version >/dev/null 2>&1; then \
@@ -30,6 +30,15 @@ test-container:
 
 test-opa-live:
 	bash agentsafe/tests/run_opa_live_test.sh
+
+opa-local-up:
+	$(DC) -f integrations/opa_local/docker-compose.yml up -d
+
+opa-local-down:
+	$(DC) -f integrations/opa_local/docker-compose.yml down --remove-orphans
+
+opa-local-health:
+	curl -fsS http://127.0.0.1:8181/health
 
 demo-openclaw:
 	$(DC) -f integrations/openclaw/docker-compose.yml up --build --abort-on-container-exit demo-runner

@@ -15,6 +15,7 @@ class Grant:
     actor: str
     tool: str
     scope: str
+    session_id: str
     reason: str
     created_at: str
     expires_at: str
@@ -26,6 +27,7 @@ class ApprovalRequest:
     actor: str
     tool: str
     scope: str
+    session_id: str
     reason: str
     created_at: str
     expires_at: str
@@ -45,13 +47,23 @@ class GrantStore:
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(event, sort_keys=True) + "\n")
 
-    def issue(self, actor: str, tool: str, scope: str, ttl_seconds: int, reason: str) -> Grant:
+    def issue(
+        self,
+        actor: str,
+        tool: str,
+        scope: str,
+        ttl_seconds: int,
+        reason: str,
+        session_id: str = "*",
+    ) -> Grant:
         now = datetime.now(timezone.utc)
+        normalized_session = session_id if isinstance(session_id, str) and session_id else "*"
         grant = Grant(
             grant_id=str(uuid.uuid4()),
             actor=actor,
             tool=tool,
             scope=scope,
+            session_id=normalized_session,
             reason=reason,
             created_at=now.isoformat(),
             expires_at=(now + timedelta(seconds=ttl_seconds)).isoformat(),
@@ -99,6 +111,7 @@ class GrantStore:
                     actor=event["actor"],
                     tool=event["tool"],
                     scope=event["scope"],
+                    session_id=event.get("session_id", "*"),
                     reason=event.get("reason", ""),
                     created_at=event["created_at"],
                     expires_at=event["expires_at"],
@@ -106,12 +119,14 @@ class GrantStore:
             )
         return out
 
-    def is_allowed(self, actor: str, tool: str, scope: str) -> bool:
+    def is_allowed(self, actor: str, tool: str, scope: str, session_id: str = "") -> bool:
         for grant in self.active_grants():
             actor_ok = grant.actor in {actor, "*"}
             tool_ok = grant.tool in {tool, "*"}
             scope_ok = fnmatch.fnmatch(scope, grant.scope)
-            if actor_ok and tool_ok and scope_ok:
+            grant_session_pattern = grant.session_id if isinstance(grant.session_id, str) and grant.session_id else "*"
+            session_ok = fnmatch.fnmatch(session_id or "", grant_session_pattern)
+            if actor_ok and tool_ok and scope_ok and session_ok:
                 return True
         return False
 
@@ -146,6 +161,7 @@ class ApprovalRequestStore:
                     actor=event["actor"],
                     tool=event["tool"],
                     scope=event["scope"],
+                    session_id=event.get("session_id", "*"),
                     reason=event.get("reason", ""),
                     created_at=event["created_at"],
                     expires_at=event["expires_at"],
@@ -164,13 +180,23 @@ class ApprovalRequestStore:
                 req.grant_id = event.get("grant_id", "")
         return requests
 
-    def create(self, actor: str, tool: str, scope: str, reason: str, ttl_seconds: int = 900) -> ApprovalRequest:
+    def create(
+        self,
+        actor: str,
+        tool: str,
+        scope: str,
+        reason: str,
+        ttl_seconds: int = 900,
+        session_id: str = "*",
+    ) -> ApprovalRequest:
         now = datetime.now(timezone.utc)
+        normalized_session = session_id if isinstance(session_id, str) and session_id else "*"
         req = ApprovalRequest(
             request_id=str(uuid.uuid4()),
             actor=actor,
             tool=tool,
             scope=scope,
+            session_id=normalized_session,
             reason=reason,
             created_at=now.isoformat(),
             expires_at=(now + timedelta(seconds=ttl_seconds)).isoformat(),
@@ -213,6 +239,7 @@ class ApprovalRequestStore:
             scope=req.scope,
             ttl_seconds=ttl_seconds,
             reason=reason,
+            session_id=req.session_id,
         )
         self._append(
             {

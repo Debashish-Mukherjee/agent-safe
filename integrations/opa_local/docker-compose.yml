@@ -1,0 +1,9 @@
+services:
+  opa-local:
+    image: openpolicyagent/opa:latest
+    container_name: agentsafe-opa-local
+    ports:
+      - "8181:8181"
+    volumes:
+      - ../../policies/opa:/policies:ro
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies/agentsafe.rego"]

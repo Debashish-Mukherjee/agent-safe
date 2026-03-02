@@ -68,3 +68,27 @@ def test_live_opa_backend_parity_on_allow_and_deny(tmp_path: Path):
 
     for yaml_decision, opa_decision in decisions:
         assert yaml_decision.allowed == opa_decision.allowed
+
+    assert yaml_backend.env_allowlist() == opa_backend.env_allowlist()
+    assert yaml_backend.network_mode() == opa_backend.network_mode()
+
+
+@pytest.mark.skipif(not os.environ.get("AGENTSAFE_OPA_URL"), reason="AGENTSAFE_OPA_URL not set")
+def test_live_opa_backend_parity_for_port_and_scheme_blocks(tmp_path: Path):
+    policy_path = _write_policy(tmp_path)
+    yaml_backend = YamlPolicyBackend.from_path(policy_path)
+    opa_backend = OpaPolicyBackend(str(policy_path))
+
+    decisions = [
+        (
+            yaml_backend.evaluate_fetch("https://openai.com:444"),
+            opa_backend.evaluate_fetch("https://openai.com:444"),
+        ),
+        (
+            yaml_backend.evaluate_fetch("ftp://openai.com/file.txt"),
+            opa_backend.evaluate_fetch("ftp://openai.com/file.txt"),
+        ),
+    ]
+
+    for yaml_decision, opa_decision in decisions:
+        assert yaml_decision.allowed == opa_decision.allowed

@@ -27,6 +27,14 @@ def test_openclaw_auto_falls_back_to_generic_for_legacy_payload():
     assert action.args["command"] == "ls -la"
 
 
+def test_openclaw_auto_falls_back_on_legacy_route_if_strict_legacy_fails():
+    payload = _fixture("request_tool_execute_legacy.json")
+    payload["input"] = "not-an-object"
+    action = parse_openclaw_auto_request("/gateway/tools/execute", payload, fallback_actor="fallback")
+    assert action.request_id == "legacy-1"
+    assert action.tool == "shell.run"
+
+
 def test_openclaw_auto_falls_back_if_strict_parse_fails():
     payload = _fixture("request_tool_execute_legacy.json")
     action = parse_openclaw_auto_request("/v1/tools/execute", payload, fallback_actor="fallback")

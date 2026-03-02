@@ -4,9 +4,11 @@ import json
 import os
 import re
 import shlex
+import time
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.parse import urljoin
 
 import requests
@@ -16,6 +18,10 @@ from agentsafe.audit.ledger import AuditLedger
 from agentsafe.integrations.model import ToolAction
 from agentsafe.integrations.registry import AdapterFn, get_adapter
 from agentsafe.policy.factory import load_backend
+from agentsafe.policy.profiles import PolicyProfileError, resolve_policy_profile
+from agentsafe.policy.evaluate import evaluate_fetch_request
+from agentsafe.policy.output_controls import deterministic_jitter_ms
+from agentsafe.policy.rbac import RbacPolicy, RbacPolicyError, is_tool_allowed, load_rbac_policy
 
 
 @dataclass(slots=True)
@@ -28,6 +34,10 @@ class ProxyConfig:
     tool_methods: list[str]
     adapter: str = "openclaw_auto"
     actor_header: str = "X-Agent-Actor"
+    team_header: str = "X-Agent-Team"
+    profile_header: str = "X-Agent-Profile"
+    rbac_path: str = ""
+    profiles_path: str = ""
 
 
 @dataclass(slots=True)
@@ -53,6 +63,10 @@ def load_proxy_config() -> ProxyConfig:
         tool_methods=[part.strip().upper() for part in method_csv.split(",") if part.strip()],
         adapter=os.environ.get("AGENTSAFE_PROXY_ADAPTER", "openclaw_auto"),
         actor_header=os.environ.get("AGENTSAFE_ACTOR_HEADER", "X-Agent-Actor"),
+        team_header=os.environ.get("AGENTSAFE_TEAM_HEADER", "X-Agent-Team"),
+        profile_header=os.environ.get("AGENTSAFE_PROFILE_HEADER", "X-Agent-Profile"),
+        rbac_path=os.environ.get("AGENTSAFE_RBAC_POLICY", ""),
+        profiles_path=os.environ.get("AGENTSAFE_PROXY_PROFILES_PATH", ""),
     )
 
 
@@ -72,16 +86,35 @@ def forward_upstream(method: str, url: str, headers: dict[str, str], raw_body: b
     return requests.request(method=method, url=url, data=raw_body, headers=headers, timeout=20, stream=True)
 
 
-def relay_upstream_response(handler: BaseHTTPRequestHandler, response) -> None:
+def relay_upstream_response(
+    handler: BaseHTTPRequestHandler,
+    response,
+    *,
+    max_bytes: int = 0,
+    min_delay_ms: int = 0,
+    jitter_ms: int = 0,
+    jitter_seed: str = "",
+) -> None:
+    delay_ms = max(0, min_delay_ms) + deterministic_jitter_ms(jitter_seed, max(0, jitter_ms))
+    if delay_ms:
+        time.sleep(delay_ms / 1000.0)
+
     handler.send_response(response.status_code)
     for key, value in response.headers.items():
         if key.lower() in {"content-length", "transfer-encoding", "connection"}:
             continue
         handler.send_header(key, value)
     handler.end_headers()
+    remaining = max_bytes if max_bytes > 0 else None
     try:
         for chunk in response.iter_content(chunk_size=64 * 1024):
             if chunk:
+                if remaining is not None:
+                    if remaining <= 0:
+                        break
+                    if len(chunk) > remaining:
+                        chunk = chunk[:remaining]
+                    remaining -= len(chunk)
                 handler.wfile.write(chunk)
     finally:
         response.close()
@@ -133,6 +166,28 @@ def evaluate_action(action: ToolAction, backend, workspace_root: Path) -> ProxyE
 
     if lowered in {"http.fetch", "fetch", "browser.fetch"}:
         url = str(action.args.get("url", ""))
+        policy = getattr(backend, "policy", None)
+        if policy is not None:
+            method = str(action.args.get("method", "GET") or "GET")
+            parsed = urlparse(url)
+            path = parsed.path or "/"
+            headers_raw = action.args.get("headers", {})
+            headers = {str(k): str(v) for k, v in headers_raw.items()} if isinstance(headers_raw, dict) else {}
+            body_raw = action.args.get("body", action.args.get("data", ""))
+            if isinstance(body_raw, (dict, list)):
+                body = json.dumps(body_raw, sort_keys=True)
+            else:
+                body = str(body_raw or "")
+            req_decision = evaluate_fetch_request(
+                policy,
+                method=method,
+                path=path,
+                headers=headers,
+                body=body,
+            )
+            if not req_decision.allowed:
+                return ProxyEvaluation(False, req_decision.reason, req_decision.rule_id, action)
+
         decision = backend.evaluate_fetch(url)
         return ProxyEvaluation(decision.allowed, decision.reason, decision.rule_id, action)
 
@@ -168,15 +223,20 @@ def process_tool_request(
     config: ProxyConfig,
     backend,
     grants: GrantStore,
+    actor_team: str,
+    rbac_policy: RbacPolicy | None,
     workspace_root: Path,
     adapter_fn: AdapterFn,
 ) -> ProxyEvaluation:
     action = adapter_fn(path, payload, fallback_actor)
+    if rbac_policy is not None and not is_tool_allowed(rbac_policy, actor=action.actor, team=actor_team, tool=action.tool):
+        return ProxyEvaluation(False, f"rbac blocked tool: {action.tool}", "proxy_rbac_block", action)
+
     evaluation = evaluate_action(action=action, backend=backend, workspace_root=workspace_root)
 
     if evaluation.allowed and is_privileged_action(action):
         scope = grant_scope_for_action(action)
-        if not grants.is_allowed(actor=action.actor, tool=action.tool, scope=scope):
+        if not grants.is_allowed(actor=action.actor, tool=action.tool, scope=scope, session_id=action.session_id):
             return ProxyEvaluation(False, "proxy approval grant required", "proxy_approval_required", action)
 
     return evaluation
@@ -187,6 +247,8 @@ class ModeBHandler(BaseHTTPRequestHandler):
     backend = None
     ledger: AuditLedger
     grants: GrantStore
+    rbac_policy: RbacPolicy | None
+    backend_cache: dict[tuple[str, str], object]
     adapter_fn: AdapterFn
 
     def log_message(self, format: str, *args):
@@ -208,25 +270,43 @@ class ModeBHandler(BaseHTTPRequestHandler):
         raw_body = self._read_body()
         generated_request_id = self.ledger.new_request_id()
         actor = self.headers.get(self.config.actor_header, "openclaw-agent")
+        team = self.headers.get(self.config.team_header, "")
+        profile = self.headers.get(self.config.profile_header, "")
 
+        backend = self.backend
         if should_inspect_tool_call(method=method, path=self.path, config=self.config):
             try:
                 payload = json.loads(raw_body.decode("utf-8"))
             except json.JSONDecodeError:
                 payload = {}
             try:
+                if self.config.profiles_path:
+                    selected = resolve_policy_profile(
+                        profiles_path=self.config.profiles_path,
+                        profile_name=profile,
+                        actor=actor,
+                        team=team,
+                    )
+                    cache_key = (selected.backend, selected.policy_path)
+                    backend = self.backend_cache.get(cache_key)
+                    if backend is None:
+                        backend = load_backend(selected.backend, selected.policy_path)
+                        self.backend_cache[cache_key] = backend
+
                 adapter_fn = self.__class__.adapter_fn
                 evaluation = process_tool_request(
                     path=self.path,
                     payload=payload,
                     fallback_actor=actor,
                     config=self.config,
-                    backend=self.backend,
+                    backend=backend,
                     grants=self.grants,
+                    actor_team=team,
+                    rbac_policy=self.rbac_policy,
                     workspace_root=Path(self.config.workspace).resolve(),
                     adapter_fn=adapter_fn,
                 )
-            except ValueError as exc:
+            except (ValueError, PolicyProfileError) as exc:
                 self._write_json(400, {"error": "bad_request", "reason": str(exc), "request_id": generated_request_id})
                 return
 
@@ -244,7 +324,16 @@ class ModeBHandler(BaseHTTPRequestHandler):
         except requests.RequestException as exc:
             self._write_json(502, {"error": "upstream_unavailable", "reason": str(exc), "request_id": generated_request_id})
             return
-        relay_upstream_response(self, response)
+        out_policy = getattr(getattr(backend, "policy", None), "tools", None)
+        output = getattr(out_policy, "output", None)
+        relay_upstream_response(
+            self,
+            response,
+            max_bytes=int(getattr(output, "proxy_max_response_bytes", 0) or 0),
+            min_delay_ms=int(getattr(output, "proxy_min_delay_ms", 0) or 0),
+            jitter_ms=int(getattr(output, "proxy_jitter_ms", 0) or 0),
+            jitter_seed=generated_request_id,
+        )
 
     def do_POST(self):
         self._handle_request("POST")
@@ -267,12 +356,20 @@ def run_modeb_proxy(listen_host: str, listen_port: int) -> None:
     backend = load_backend(config.policy_backend, config.policy_path)
     ledger = AuditLedger()
     grants = GrantStore()
+    rbac_policy: RbacPolicy | None = None
+    if config.rbac_path:
+        try:
+            rbac_policy = load_rbac_policy(config.rbac_path)
+        except RbacPolicyError as exc:
+            raise ValueError(f"invalid RBAC policy: {exc}")
     adapter_fn = get_adapter(config.adapter)
 
     ModeBHandler.config = config
     ModeBHandler.backend = backend
     ModeBHandler.ledger = ledger
     ModeBHandler.grants = grants
+    ModeBHandler.rbac_policy = rbac_policy
+    ModeBHandler.backend_cache = {}
     ModeBHandler.adapter_fn = adapter_fn
 
     server = ThreadingHTTPServer((listen_host, listen_port), ModeBHandler)

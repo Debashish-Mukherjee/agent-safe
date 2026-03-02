@@ -34,11 +34,20 @@ AGENTSAFE_PROXY_TOOL_PATH_REGEX='^/v1/tools/execute$,^/gateway/tools/execute$,^/
 AGENTSAFE_PROXY_TOOL_METHODS='POST,PUT,PATCH' \
 agentsafe proxy --host 0.0.0.0 --port 8090
 ```
-Default adapter is `openclaw_auto` (strict v2, then strict v1, then generic fallback). Override with:
+Optional profile-driven policy selection at proxy boundary:
+```bash
+export AGENTSAFE_PROXY_PROFILES_PATH=policies/profiles.example.yaml
+export AGENTSAFE_ACTOR_HEADER=X-Agent-Actor
+export AGENTSAFE_TEAM_HEADER=X-Agent-Team
+export AGENTSAFE_PROFILE_HEADER=X-Agent-Profile
+```
+Default adapter is `openclaw_auto` (strict v2, then strict v1, then strict legacy, then generic fallback). Override with:
 ```bash
 export AGENTSAFE_PROXY_ADAPTER=openclaw_strict_v1
 # or
 export AGENTSAFE_PROXY_ADAPTER=openclaw_strict_v2
+# or
+export AGENTSAFE_PROXY_ADAPTER=openclaw_strict_legacy
 ```
 
 Grant privileged tool call approval (TTL scoped):

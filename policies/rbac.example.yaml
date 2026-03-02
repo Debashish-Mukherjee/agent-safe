@@ -1,0 +1,24 @@
+roles:
+  viewer:
+    - "http.fetch"
+  operator:
+    allow:
+      - "shell.run"
+    deny:
+      - "shell.run-dangerous"
+  admin:
+    - "*"
+
+deny_tools:
+  - "shell.run.root*"
+
+actor_roles:
+  openclaw-agent:
+    - operator
+
+team_roles:
+  secops:
+    - viewer
+
+default_roles:
+  - viewer

@@ -114,3 +114,48 @@ def evaluate_url(policy: Policy, url: str) -> Decision:
             return Decision(False, f"port not allowed for domain: {host}:{port}", "net_port_block")
 
     return Decision(False, f"domain not allowlisted: {host}", "net_domain_block")
+
+
+def evaluate_fetch_request(
+    policy: Policy,
+    *,
+    method: str,
+    path: str,
+    headers: dict[str, str],
+    body: str,
+) -> Decision:
+    net = policy.tools.network
+    normalized_method = (method or "GET").upper()
+
+    if net.http_methods and normalized_method not in {m.upper() for m in net.http_methods}:
+        return Decision(False, f"http method blocked: {normalized_method}", "net_method_block")
+
+    if net.http_path_allow_regex:
+        try:
+            allowed = any(re.search(pattern, path or "/") for pattern in net.http_path_allow_regex)
+        except re.error as exc:
+            return Decision(False, f"invalid path regex in policy: {exc}", "net_policy_regex_error")
+        if not allowed:
+            return Decision(False, f"http path blocked: {path}", "net_path_block")
+
+    for pattern in net.deny_header_patterns:
+        try:
+            for key, value in headers.items():
+                header_line = f"{key}: {value}"
+                if re.search(pattern, key) or re.search(pattern, value) or re.search(pattern, header_line):
+                    return Decision(False, "http header matched deny pattern", "net_header_block")
+        except re.error as exc:
+            return Decision(False, f"invalid header regex in policy: {exc}", "net_policy_regex_error")
+
+    body_bytes = len((body or "").encode("utf-8"))
+    if body_bytes > int(net.max_request_body_bytes):
+        return Decision(False, f"http body too large: {body_bytes}", "net_body_size_block")
+
+    for pattern in net.deny_body_patterns:
+        try:
+            if re.search(pattern, body or ""):
+                return Decision(False, "http body matched deny pattern", "net_body_pattern_block")
+        except re.error as exc:
+            return Decision(False, f"invalid body regex in policy: {exc}", "net_policy_regex_error")
+
+    return Decision(True, "http request metadata allowed", "net_request_allow")

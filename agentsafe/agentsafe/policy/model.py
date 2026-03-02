@@ -21,6 +21,11 @@ class NetworkPolicy:
     mode: str = "none"
     domains: list[str] = field(default_factory=list)
     ports: list[int] = field(default_factory=lambda: [443])
+    http_methods: list[str] = field(default_factory=lambda: ["GET"])
+    http_path_allow_regex: list[str] = field(default_factory=list)
+    max_request_body_bytes: int = 8192
+    deny_header_patterns: list[str] = field(default_factory=list)
+    deny_body_patterns: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -31,12 +36,22 @@ class RateLimitRule:
 
 
 @dataclass(slots=True)
+class OutputPolicy:
+    max_stdout_bytes: int = 65536
+    max_stderr_bytes: int = 65536
+    proxy_max_response_bytes: int = 1048576
+    proxy_min_delay_ms: int = 0
+    proxy_jitter_ms: int = 0
+
+
+@dataclass(slots=True)
 class ToolPolicy:
     commands: list[CommandRule] = field(default_factory=list)
     paths: PathPolicy = field(default_factory=PathPolicy)
     env_allowlist: list[str] = field(default_factory=list)
     network: NetworkPolicy = field(default_factory=NetworkPolicy)
     rate_limits: list[RateLimitRule] = field(default_factory=list)
+    output: OutputPolicy = field(default_factory=OutputPolicy)
 
 
 @dataclass(slots=True)

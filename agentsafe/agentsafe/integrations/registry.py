@@ -6,6 +6,7 @@ from agentsafe.integrations.light_gateway.adapter import parse_execute_request
 from agentsafe.integrations.model import ToolAction
 from agentsafe.integrations.openclaw.adapter_generic import parse_generic_request
 from agentsafe.integrations.openclaw.adapter_router import parse_openclaw_auto_request
+from agentsafe.integrations.openclaw.adapter_strict_legacy import parse_strict_legacy_request
 from agentsafe.integrations.openclaw.adapter_strict_v1 import parse_strict_v1_request
 from agentsafe.integrations.openclaw.adapter_strict_v2 import parse_strict_v2_request
 
@@ -23,4 +24,6 @@ def get_adapter(name: str) -> AdapterFn:
         return parse_strict_v1_request
     if name == "openclaw_strict_v2":
         return parse_strict_v2_request
+    if name == "openclaw_strict_legacy":
+        return parse_strict_legacy_request
     raise ValueError(f"unknown adapter: {name}")
